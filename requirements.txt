@@ -2,6 +2,9 @@
 openpyxl>=3.1.0
 pandas>=2.0.0
 
+# Configuration files
+PyYAML>=6.0.0
+
 # Optional AI agent dependencies
 # Uncomment if using with LangChain/LangGraph
 # langchain>=0.1.0

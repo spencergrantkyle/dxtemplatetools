@@ -1,0 +1,30 @@
+# Excel Flattener Tool Configuration
+
+tool_name: "excel_flattener"
+description: "Flatten Excel workbooks into structured CSV data"
+version: "1.0.0"
+
+# Default settings
+defaults:
+  include_empty_cells: false
+  log_level: "INFO"
+  output_suffix: "_flattened"
+
+# Column mappings for output CSV
+output_columns:
+  - "Sheet"          # Sheet name
+  - "RowNum"         # Row number
+  - "ColRef"         # Column reference (A, B, C, etc.)
+  - "Formula Text"   # Formula text if it's a formula cell
+  - "CellValue"      # Actual cell value
+  - "Value Type"     # Type of value (formula, number, string, etc.)
+
+# Supported file formats
+supported_formats:
+  - ".xlsx"
+  - ".xlsm"
+
+# Performance settings
+performance:
+  max_cells_warning: 100000  # Warn if processing more than this many cells
+  chunk_size: 10000          # Process in chunks for large files

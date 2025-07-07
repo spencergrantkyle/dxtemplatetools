@@ -1,0 +1,44 @@
+# GUID Extractor Tool Configuration
+
+tool_name: "guid_extractor"
+description: "Extract data from Excel rows using GUID mappings"
+version: "1.0.0"
+
+# Default settings
+defaults:
+  start_column: 124      # Starting column for data extraction
+  end_column: 200        # Ending column for data extraction
+  log_level: "INFO"
+  output_suffix: "_guid_extracted"
+
+# GUID validation rules
+guid_validation:
+  length: 8              # Expected GUID length
+  case_sensitive: false  # Whether GUID matching is case-sensitive
+  allow_duplicates: false # Whether to allow duplicate GUIDs in mapping
+
+# Column mapping for FRS102 workbooks
+# Columns 124-200 typically contain:
+column_meanings:
+  124: "IFRS Flag"
+  125: "FRS102 Flag" 
+  126: "Company Flag"
+  127: "Charity Flag"
+  128: "UK Flag"
+  # ... additional column meanings can be added here
+
+# Sheet validation
+sheet_validation:
+  case_sensitive: false  # Whether sheet name matching is case-sensitive
+  warn_missing: true     # Warn if sheet not found in workbook
+
+# Performance settings
+performance:
+  max_guids_warning: 1000  # Warn if processing more than this many GUIDs
+  batch_size: 100          # Process GUIDs in batches for large files
+
+# Output settings
+output:
+  include_metadata: true   # Include SheetName, GUID, RowNum columns
+  include_empty_cells: true # Include cells with null/empty values
+  date_format: "%Y-%m-%d"  # Format for date values
