@@ -1,0 +1,66 @@
+# GUID Formula Updater Tool Configuration
+
+tool_name: "guid_formula_updater"
+description: "Process GUIDs from flattened data and classify with FRS102 standards via OpenAI"
+version: "1.0.0"
+
+# OpenAI API Configuration
+openai:
+  model: "gpt-4o"  # Model with web search capabilities
+  temperature: 0.1  # Low temperature for consistent results
+  max_tokens: 500
+  timeout: 30  # seconds
+  max_retries: 3
+  
+# Default instructions for OpenAI API calls
+default_instruction: |
+  Review the accounting policy formula and assign the UK FRS102 accounting standard and paragraph reference that is applicable for that paragraph. 
+  If the paragraph is not specifically attributable to a certain standard, mark it as "General FS Verbage".
+  Return your response in this exact format: "FRS102 Section X.Y (Paragraph Z)" or "General FS Verbage".
+
+# CSV processing settings
+csv_processing:
+  input_columns:
+    guid_column: "GUID"
+    sheet_column: "Sheet"
+    row_column: "RowNum"
+    col_ref_column: "ColRef"
+    formula_column: "Formula Text"
+    cell_value_column: "CellValue"
+    value_type_column: "Value Type"
+  
+  output_columns:
+    classification_column: "FRS102_Classification"
+  
+  # Column D filtering
+  target_column: "D"  # Only process rows where ColRef = D
+
+# Batch processing settings
+batch_processing:
+  batch_size: 10  # Number of API calls to process in parallel
+  delay_between_batches: 1  # seconds
+  max_concurrent_requests: 5
+
+# Named ranges dictionary/knowledge base
+# These are common fields that appear in formulas
+named_ranges:
+  CompanyName: "The name of the reporting company"
+  ReportingDate: "The financial year end date"
+  PreviousDate: "The previous financial year end date"
+  Currency: "The reporting currency (typically GBP)"
+  CharityRegNum: "Charity Registration Number"
+  CompanyRegNum: "Company Registration Number"
+  PreparedBy: "Person/firm who prepared the accounts"
+  ReviewedBy: "Person/firm who reviewed/audited the accounts"
+
+# Error handling
+error_handling:
+  skip_on_api_error: true  # Continue processing other GUIDs if one fails
+  log_failures: true
+  default_classification_on_error: "API_Error"
+
+# Validation settings
+validation:
+  required_columns: ["GUID", "Sheet", "RowNum", "ColRef", "Formula Text"]
+  guid_format_check: false  # Set to true if GUIDs must be 8 characters
+  max_formula_length: 5000  # Skip formulas longer than this

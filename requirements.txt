@@ -5,6 +5,9 @@ pandas>=2.0.0
 # Configuration files
 PyYAML>=6.0.0
 
+# OpenAI API for GUID Formula Updater
+openai>=1.0.0
+
 # Optional AI agent dependencies
 # Uncomment if using with LangChain/LangGraph
 # langchain>=0.1.0
