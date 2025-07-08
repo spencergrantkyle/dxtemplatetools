@@ -1,0 +1,288 @@
+# === {{ title }} ===
+# Generated from Notion template on {{ generation_date }}
+# Author: {{ author }}
+# Framework(s): {{ frameworks | join(', ') }}
+"""
+{{ problem_summary }}
+
+Root Cause: {{ root_cause }}
+
+This agent automates the following process:
+{{ temporary_fix_steps | join('\n') }}
+
+Permanent changes implemented:
+{{ permanent_template_changes | join('\n') }}
+"""
+
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional
+from langgraph.graph import StateGraph, START, END
+import logging
+
+# Import your custom tools
+{% for tool in tools_needed %}
+from tools.{{ tool }} import {{ tool }}
+{% endfor %}
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# ---------- State Definition ----------
+class {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State(BaseModel):
+    """State for {{ title }} agent."""
+    messages: List[Dict[str, Any]] = Field(default_factory=list)
+    
+    # Core state fields
+    {% if 'is_uk' in conditional_routes | string %}
+    is_uk: bool = False
+    {% endif %}
+    {% if 'framework' in conditional_routes | string %}
+    framework: Optional[str] = None
+    {% endif %}
+    {% if 'link_hits' in conditional_routes | string %}
+    link_hits: Dict[str, Any] = Field(default_factory=dict)
+    {% endif %}
+    {% if 'proposed_updates' in conditional_routes | string %}
+    proposed_updates: List[str] = Field(default_factory=list)
+    {% endif %}
+    
+    # Process-specific state fields
+    {% for field in extra_state_fields %}
+    {{ field.name }}: {{ field.type }} = {{ field.default }}
+    {% endfor %}
+    
+    # Tracking fields
+    success: bool = False
+    error_message: Optional[str] = None
+    actions_taken: List[str] = Field(default_factory=list)
+
+# ---------- Tool Functions ----------
+{% for tool in tools_needed %}
+def call_{{ tool }}(state: {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State, **kwargs) -> Dict[str, Any]:
+    """Wrapper for {{ tool }} tool."""
+    try:
+        result = {{ tool }}(**kwargs)
+        logger.info(f"Successfully called {{ tool }}")
+        state.actions_taken.append("{{ tool }}")
+        return result
+    except Exception as e:
+        logger.error(f"Error calling {{ tool }}: {e}")
+        state.error_message = f"{{ tool }} failed: {str(e)}"
+        return {}
+{% endfor %}
+
+# ---------- Node Functions ----------
+{% for node in langgraph_nodes %}
+def {{ node.name }}(state: {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State) -> {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State:
+    """
+    {{ node.description }}
+    
+    Inputs: {{ node.inputs }}
+    Outputs: {{ node.outputs }}
+    """
+    logger.info(f"Executing {{ node.name }}")
+    
+    {% if node.type == 'LLM' %}
+    # LLM node implementation
+    try:
+        # Extract relevant information from messages
+        latest_message = state.messages[-1] if state.messages else {}
+        
+        # TODO: Implement LLM logic here
+        # This would typically involve calling your LLM with appropriate prompts
+        
+        logger.info("LLM processing completed")
+        
+    except Exception as e:
+        logger.error(f"Error in {{ node.name }}: {e}")
+        state.error_message = str(e)
+    
+    {% elif node.type == 'Tool' %}
+    # Tool node implementation
+    try:
+        {% if 'search' in node.name %}
+        # Search operation
+        {% if affected_links_guids %}
+        search_links = {{ affected_links_guids | map(attribute='link') | list }}
+        result = call_search_linksmaster(state, links=search_links)
+        {% endif %}
+        
+        {% elif 'update' in node.name %}
+        # Update operation
+        {% if affected_links_guids %}
+        for link_update in {{ affected_links_guids | list }}:
+            result = call_update_linksmaster(
+                state,
+                link=link_update['link'],
+                framework="{{ affected_links_guids[0].framework if affected_links_guids else 'FRS102' }}",
+                new_flag=link_update['new_flag']
+            )
+        {% endif %}
+        
+        {% else %}
+        # Generic tool call
+        # TODO: Implement specific tool logic
+        pass
+        {% endif %}
+        
+        logger.info(f"Tool {{ node.name }} completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error in {{ node.name }}: {e}")
+        state.error_message = str(e)
+    
+    {% elif node.type == 'Router' or node.type == 'Condition' %}
+    # Routing/condition node implementation
+    try:
+        {% if 'triage' in node.name %}
+        # Triage logic
+        if state.messages:
+            content = state.messages[-1].get('content', '').lower()
+            state.is_uk = any(keyword in content for keyword in ['uk', 'scotland', 'ireland', 'guernsey', 'wales'])
+            
+            # Extract framework if mentioned
+            for framework in ['frs102', 'frs105', 'llp', 'sorp']:
+                if framework in content:
+                    state.framework = framework.upper()
+                    break
+        
+        {% else %}
+        # Generic routing logic
+        # TODO: Implement specific routing logic
+        pass
+        {% endif %}
+        
+        logger.info(f"Routing {{ node.name }} completed")
+        
+    except Exception as e:
+        logger.error(f"Error in {{ node.name }}: {e}")
+        state.error_message = str(e)
+    
+    {% else %}
+    # Generic node implementation
+    try:
+        # TODO: Implement {{ node.type }} node logic
+        logger.info(f"{{ node.name }} executed ({{ node.type }})")
+        
+    except Exception as e:
+        logger.error(f"Error in {{ node.name }}: {e}")
+        state.error_message = str(e)
+    {% endif %}
+    
+    {% if node.body %}
+    # Custom node implementation
+    {{ node.body | indent(4) }}
+    {% endif %}
+    
+    return state
+
+{% endfor %}
+
+# ---------- Conditional Edge Functions ----------
+{% for route in conditional_routes %}
+def decide_{{ route.source }}_next(state: {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State) -> str:
+    """Decision function for {{ route.source }} node."""
+    {% if route.when == 'state.is_uk' %}
+    if state.is_uk:
+        return "{{ route.dest }}"
+    {% elif route.when == 'not state.is_uk' %}
+    if not state.is_uk:
+        return "{{ route.dest }}"
+    {% elif route.when == 'state.link_hits' %}
+    if state.link_hits:
+        return "{{ route.dest }}"
+    {% elif route.when == 'not state.link_hits' %}
+    if not state.link_hits:
+        return "{{ route.dest }}"
+    {% elif route.when == 'state.error_message' %}
+    if state.error_message:
+        return "{{ route.dest }}"
+    {% else %}
+    # Custom condition: {{ route.when }}
+    if {{ route.when }}:
+        return "{{ route.dest }}"
+    {% endif %}
+    return END
+
+{% endfor %}
+
+# ---------- Graph Construction ----------
+def create_{{ title | replace(' ', '') | replace('–', '') | replace('-', '') | lower }}_agent():
+    """Create and return the compiled LangGraph agent."""
+    
+    # Initialize the state graph
+    graph = StateGraph({{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State)
+    
+    # Add nodes
+    {% for node in langgraph_nodes %}
+    graph.add_node("{{ node.name }}", {{ node.name }})
+    {% endfor %}
+    
+    # Add edges
+    {% if langgraph_nodes %}
+    graph.add_edge(START, "{{ langgraph_nodes[0].name }}")
+    {% endif %}
+    
+    {% for route in conditional_routes %}
+    graph.add_conditional_edges(
+        "{{ route.source }}",
+        decide_{{ route.source }}_next,
+        {
+            "{{ route.dest }}": "{{ route.dest }}",
+            END: END
+        }
+    )
+    {% endfor %}
+    
+    # Add final edges to END
+    {% for node in langgraph_nodes %}
+    {% if not (conditional_routes | selectattr('source', 'equalto', node.name) | list) %}
+    graph.add_edge("{{ node.name }}", END)
+    {% endif %}
+    {% endfor %}
+    
+    # Compile the graph
+    return graph.compile()
+
+# ---------- Agent Instance ----------
+{{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}Agent = create_{{ title | replace(' ', '') | replace('–', '') | replace('-', '') | lower }}_agent()
+
+# ---------- Testing Function ----------
+def test_agent_with_case():
+    """Test the agent with the provided test case."""
+    test_case = {{ test_cases[0] if test_cases else '{}' }}
+    
+    if not test_case:
+        logger.warning("No test case provided")
+        return False
+    
+    try:
+        # Create initial state from test case
+        initial_state = {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}State(
+            messages=[{"content": test_case.get("input", {}).get("slack_message", "")}]
+        )
+        
+        # Run the agent
+        result = {{ title | replace(' ', '') | replace('–', '') | replace('-', '') }}Agent.invoke(initial_state)
+        
+        # Validate against expected output
+        expected = test_case.get("expected_output", {})
+        
+        # Check success criteria
+        success_criteria = [
+            {% for item in definition_of_done %}
+            # {{ item }}
+            {% endfor %}
+        ]
+        
+        # TODO: Implement specific validation logic
+        logger.info("Test completed - manual validation required")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Test failed: {e}")
+        return False
+
+if __name__ == "__main__":
+    # Run test when script is executed directly
+    test_agent_with_case()
