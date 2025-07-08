@@ -93,6 +93,33 @@ print(f"Extracted {result.rows_extracted} rows")
 
 ## 🛠️ Available Tools
 
+### 🤖 LangGraph Agent Development Playbook
+
+**NEW**: A comprehensive framework for converting support processes into executable LangGraph agents.
+
+**Location**: `agents/`
+
+**Features:**
+- Process assessment checklist for evaluating documentation readiness
+- Structured Notion template system for agent specification
+- Automated code generation using Jinja2 templates
+- Complete worked examples with test cases
+- CLI tools for agent generation and validation
+
+**Quick Start:**
+```bash
+# Assess if your process is ready for automation
+open agents/assessment/process_assessment_checklist.md
+
+# Set up Notion template for documentation
+open agents/templates/notion_template.md
+
+# Generate agent from documentation
+python agents/tools/generate_agent.py --json-file process.json
+```
+
+👉 **[View Complete Playbook](agents/README.md)**
+
 ### 📊 Excel Flattener
 
 Flattens Excel workbooks into structured CSV data for analysis and LLM processing.

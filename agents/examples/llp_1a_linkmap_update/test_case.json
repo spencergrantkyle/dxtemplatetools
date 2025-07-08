@@ -1,0 +1,159 @@
+{
+  "test_name": "LLP 1A LinkMap Update - UK User Success Case",
+  "description": "Tests the complete flow for a UK user reporting missing links in FRS102 (1A) framework",
+  "input": {
+    "slack_message": "UK user reporting missing cl.524.000 link in FRS102 (1A)",
+    "framework": "FRS102",
+    "variant": "1A",
+    "user_location": "UK",
+    "channel": "#uk-support",
+    "user_id": "U1234567890",
+    "timestamp": "1704722400"
+  },
+  "expected_output": {
+    "actions_taken": [
+      "search_linksmaster",
+      "update_linksmaster", 
+      "send_slack_reply"
+    ],
+    "links_updated": [
+      "cl.524.000",
+      "nl.524.000"
+    ],
+    "flags_changed": [
+      {
+        "link": "cl.524.000",
+        "from": "N",
+        "to": "Y",
+        "framework": "FRS102(1A)"
+      },
+      {
+        "link": "nl.524.000", 
+        "from": "N",
+        "to": "Y",
+        "framework": "FRS102(1A)"
+      }
+    ],
+    "reply_sent": true,
+    "success": true,
+    "state_assertions": {
+      "is_uk": true,
+      "framework": "FRS102",
+      "link_hits_found": true,
+      "proposed_updates_count": 2,
+      "error_message": null
+    }
+  },
+  "edge_cases": [
+    {
+      "name": "Non-UK User",
+      "input": {
+        "slack_message": "US user reporting missing cl.524.000 link in FRS102 (1A)",
+        "user_location": "US"
+      },
+      "expected_output": {
+        "actions_taken": ["send_slack_reply"],
+        "is_uk": false,
+        "early_exit": true,
+        "reply_contains": "general support team"
+      }
+    },
+    {
+      "name": "Links Not Found",
+      "input": {
+        "slack_message": "UK user reporting missing xyz.123.456 link in FRS102 (1A)",
+        "user_location": "UK"
+      },
+      "expected_output": {
+        "actions_taken": ["search_linksmaster", "send_slack_reply"],
+        "is_uk": true,
+        "link_hits_found": false,
+        "reply_contains": "escalated to our support team"
+      }
+    },
+    {
+      "name": "Update Failure",
+      "input": {
+        "slack_message": "UK user reporting missing cl.524.000 link in FRS102 (1A)",
+        "user_location": "UK",
+        "simulate_error": "update_linksmaster_failure"
+      },
+      "expected_output": {
+        "actions_taken": ["search_linksmaster", "update_linksmaster", "send_slack_reply"],
+        "is_uk": true,
+        "success": false,
+        "error_message_present": true,
+        "reply_contains": "Unable to automatically fix"
+      }
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule": "UK detection must be accurate",
+      "assertion": "state.is_uk == True when UK keywords present"
+    },
+    {
+      "rule": "Framework extraction",
+      "assertion": "state.framework extracted from message content"
+    },
+    {
+      "rule": "Link search performed for UK users",
+      "assertion": "'search_linksmaster' in state.actions_taken when is_uk=True"
+    },
+    {
+      "rule": "Updates only performed when links found",
+      "assertion": "'update_linksmaster' only in actions when link_hits present"
+    },
+    {
+      "rule": "Reply always sent",
+      "assertion": "'send_slack_reply' always in actions_taken"
+    },
+    {
+      "rule": "Success tracking",
+      "assertion": "state.success reflects actual update completion"
+    }
+  ],
+  "performance_expectations": {
+    "max_execution_time_seconds": 30,
+    "max_tool_calls": 10,
+    "required_tool_success_rate": 0.95
+  },
+  "mock_tool_responses": {
+    "search_linksmaster": {
+      "success_response": {
+        "cl.524.000": {
+          "current_flag": "N",
+          "framework": "FRS102(1A)",
+          "found": true
+        },
+        "nl.524.000": {
+          "current_flag": "N", 
+          "framework": "FRS102(1A)",
+          "found": true
+        }
+      },
+      "no_results_response": {}
+    },
+    "update_linksmaster": {
+      "success_response": {
+        "updated": true,
+        "link": "cl.524.000",
+        "old_flag": "N",
+        "new_flag": "Y",
+        "timestamp": "2025-01-08T15:30:00Z"
+      },
+      "failure_response": {
+        "updated": false,
+        "error": "Database connection failed",
+        "retry_after": 300
+      }
+    },
+    "send_slack_reply": {
+      "success_response": {
+        "message_sent": true,
+        "ts": "1704722401.123456",
+        "channel": "#uk-support"
+      }
+    }
+  }
+}
